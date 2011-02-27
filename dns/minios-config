@@ -1,0 +1,6 @@
+name="deens"
+memory=1024
+kernel="deens.xen"
+vif=['bridge=deens0']
+on_crash='preserve'
+superpages=1
