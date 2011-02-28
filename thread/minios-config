@@ -1,0 +1,6 @@
+name="sleep"
+memory=64
+kernel="sleep.xen"
+vif=[]
+on_crash='preserve'
+superpages=1

@@ -1,0 +1,5 @@
+myocamlbuild.ml
+*.log
+dns/obj/
+dns/queryperf
+_build/

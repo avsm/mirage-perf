@@ -1,0 +1,6 @@
+name="ping"
+memory=1024
+kernel="ping.xen"
+vif=['bridge=ping0']
+on_crash='preserve'
+superpages=1
