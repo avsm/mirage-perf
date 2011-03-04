@@ -60,6 +60,6 @@ function xen_direct {
   sudo xl console deens
 }
 
-#unix_socket
+unix_socket
 #unix_direct
-xen_direct
+#xen_direct

@@ -12,3 +12,11 @@ if [ ! -x queryperf ]; then
   ./configure && make
   cp queryperf ../../../..
 fi
+
+# grab dns-perf-tools
+if [ ! -d obj/dns-perf ]; then
+  mkdir -p obj/dns-perf
+  cd obj
+  wget http://downloads.sourceforge.net/project/bind-dlz/DLZ%20Perf%20Tools/DLZPerfTools-1.1/DLZPerfTools-1.1.tar.gz
+  cd dns-perf && tar xzvf ../DLZPerfTools-1.1.tar.gz
+fi

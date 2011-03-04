@@ -122,7 +122,6 @@ sub readConfig {
    
       # loop through configuration file one line at a time.
    while ($inputline = <$conf>) {
-   
          # remove any line termination characters.
       $inputline =~ s/[\r]*[\n]*$//;
          
@@ -158,7 +157,6 @@ sub readConfig {
          
          # did not find writer entry
       } else {
-   
             # check if we are currently working on a writer.
          if(length($writer) > 1){   # working on a writer, this is a parameter
                # key is on left side of :.  Strip whitespace between key & :.
@@ -187,7 +185,6 @@ sub readConfig {
             }                                    
          }
       } # ends else of search for writer entry
-      print ".$inputline\n";
    } # end of config file input loop
    
       # initialize last writer.
@@ -203,7 +200,6 @@ sub readConfig {
    # parameter 2 should be the assoc array of values
    # the module needs to initialize itself.
 sub initWriter {
-    print "X";
    my $writer = shift;
    local *params = shift;
 
@@ -224,7 +220,6 @@ sub initWriter {
 
       # add writer to list of writers.
    push (@writers, $writer);
-    print "Y";
 } # end of initWriter
 
    # loops through all the writers and tells them to cleanup.
