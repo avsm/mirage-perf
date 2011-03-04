@@ -2,4 +2,5 @@ myocamlbuild.ml
 *.log
 dns/obj/
 dns/queryperf
+dns/dlz-perf-tools/dns_data-1.0.csv*
 _build/
