@@ -1,5 +1,7 @@
 #!/bin/sh -ex
 
+export LC_ALL='C'
+
 RANGE=$(cat RANGE)
 
 if [ ! -r "data/en_GB.dic.stripped" ]; then
@@ -17,7 +19,7 @@ for n in $RANGE ; do
   done
   for f in data/format-$n.conf ; do
     rm -rf -- "named-$n/"
-    mkdir named-$n
+    mkdir data/named-$n
     dlz-perf-tools/dnsCSVDataReader.pl $f
   done
 done
