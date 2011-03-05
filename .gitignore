@@ -3,4 +3,10 @@ myocamlbuild.ml
 dns/obj/
 dns/queryperf
 dns/dlz-perf-tools/dns_data-1.0.csv*
+dns/data/named-*
+dns/data/format-*.conf
+dns/data/queryperf-*.txt
+dns/data/raw-*.csv
+dns/data/rawdata-*.conf
 _build/
+.fuse_hidden*
