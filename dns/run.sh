@@ -40,23 +40,23 @@ function xen_direct {
   # compile
   mir-xen deens.xen
   # set up bridge
-  sudo brctl addbr deens0 || true
-  sudo brctl setfd deens0 0
-  sudo brctl sethello deens0 0
-  sudo brctl stp deens0 off
-  sudo ifconfig deens0 10.0.0.1 netmask 255.255.255.0
-  sudo ifconfig deens0 up
+  sudo brctl addbr perf0 || true
+  sudo brctl setfd perf0 0
+  sudo brctl sethello perf0 0
+  sudo brctl stp perf0 off
+  sudo ifconfig perf0 10.0.0.1 netmask 255.255.255.0
+  sudo ifconfig perf0 up
   # spawn VM
   cp ../minios-config _build
   cd _build
   sudo xl create minios-config &
   sleep 5
   ping -c 3 10.0.0.2
-  (../../queryperf -l 30 -s 10.0.0.2 < ../../simple_data > ../../xen.log;
+  (../../queryperf -l 5 -s 10.0.0.2 < ../../simple_data > ../../xen.log;
    sleep 3;
    sudo xl destroy deens;
-   sudo ifconfig deens0 down;
-   sudo brctl delbr deens0) &
+   sudo ifconfig perf0 down;
+   sudo brctl delbr perf0) &
   sudo xl console deens
 }
 
