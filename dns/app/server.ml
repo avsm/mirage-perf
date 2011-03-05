@@ -35,6 +35,7 @@ ns2     IN  A      204.236.217.197
 @       IN  TXT    \"I wish I were a llama in Peru!\"
 "
 
+(*
 let rec watchdog () =
   let open Gc in
   Gc.compact ();
@@ -42,6 +43,7 @@ let rec watchdog () =
   printf "blocks: l=%d f=%d\n%!" s.live_blocks s.free_blocks;
   OS.Time.sleep 2. >>
   watchdog ()
+*)
 
 let main () =
   lwt mgr, mgr_t = Net.Manager.create () in
