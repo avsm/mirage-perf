@@ -1,3 +1,13 @@
 #!/bin/sh -ex
 
-rm -rf -- data/*-1* data/input app/_build
+rm -f data/input
+
+RANGE=$(cat RANGE)
+for n in $RANGE; do  
+  rm -rf -- data/named-$n
+  ( cd data && rm -f format-$n.conf queryperf-$n.txt raw-$n.csv rawdata-$n.conf) ;
+  ( cd app && rm -f server$n.ml deens$n.mir ) ;
+done
+
+
+      
