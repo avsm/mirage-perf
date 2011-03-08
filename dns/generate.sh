@@ -4,8 +4,9 @@ export LC_ALL='C'
 
 RANGE=$(cat RANGE)
 
-if [ ! -r "data/en_GB.dic.stripped" ]; then
-  cut -f 1 -d "/" data/en_GB.dic >| data/en_GB.dic.stripped
+if [ ! -r "data/input" ]; then
+  echo "mirage-perf.local" > data/input
+  cut -f 1 -d "/" data/en_GB.dic | grep -v "[^a-zA-Z0-9-]" | grep -v "^-" >> data/input
 fi
 
 for n in $RANGE ; do

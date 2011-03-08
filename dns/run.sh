@@ -4,11 +4,19 @@
 sudo echo 'Ensuring we have sudo credentials... done!'
   
 ROOTDIR=$(pwd)
+SHORTRUN=2
+LONGRUN=30
+DEENSIP=10.0.0.2
 
 compile () {
   cd $ROOTDIR/app
   mir-$1 deens.bin
   cd ..
+}
+
+do_run () {
+  queryperf -l $(SHORTRUN) -s $(DEENSIP) < $1 
+  queryperf -l $(LONGRUN) -s $(DEENSIP) < $1 > $2
 }
 
 unix_socket () {
@@ -32,6 +40,8 @@ unix_direct () {
   sudo ./app/_build/deens.bin &
   sleep 2
   serverpid=$!
+
+  do_run data/simple_data data/direct.log
 
   # short run to get the binary hot
   queryperf -l 2 -s 10.0.0.2 < data/simple_data
