@@ -6,7 +6,6 @@ if [ -z "$(which mir-unix-socket)" ]; then
   exit
 fi
 
-  
 sudo echo 'Ensuring we have sudo credentials... done!'
 ROOTDIR=$(pwd)
 
@@ -49,6 +48,7 @@ unix_socket () {
 
 unix_direct () {
   cd $ROOTDIR
+  sudo modprobe tun
   compile unix-direct $1
 
   sudo ./app/_build/deens$1.bin &
