@@ -10,7 +10,7 @@ DEENSIP=10.0.0.2
 
 compile () {
   cd $ROOTDIR/app
-  mir-$1 deens.bin
+  mir-$1 deensOpenmirage.bin
   cd ..
 }
 
@@ -22,7 +22,7 @@ do_run () {
 unix_socket () {
   compile unix-socket
   
-  sudo ./app/_build/deens.bin &
+  sudo ./app/_build/deensOpenmirage.bin &
   sleep 1
   serverpid=$!
   
@@ -37,7 +37,7 @@ unix_socket () {
 unix_direct () {
   compile unix-direct
 
-  sudo ./app/_build/deens.bin &
+  sudo ./app/_build/deensOpenmirage.bin &
   sleep 2
   serverpid=$!
 
