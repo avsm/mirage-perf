@@ -1,13 +1,11 @@
-set terminal pdf color enhanced fsize 14 size 5,4
+set terminal pdf color enhanced size 5,4
 set output "dns-perf.pdf"
 
 #set title ""
 set boxwidth 0.9 absolute
-set style linespoints lt 2
 
 set logscale x
 
-plot 't' u 1:2 t "unix-direct" w lp,\
-     't' u 1:3  t "unix-socket" w lp,\
-     't' u 1:4 t "xen-direct" w lp
-
+plot 'data/result-unix-socket.txt' u 1:2 t "unix-direct" w lp,\
+     'data/result-unix-direct.txt' u 1:2  t "unix-socket" w lp,\
+     'data/result-xen-direct.txt' u 1:2 t "xen-direct" w lp

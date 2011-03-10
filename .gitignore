@@ -8,5 +8,12 @@ dns/data/format-*.conf
 dns/data/queryperf-*.txt
 dns/data/raw-*.csv
 dns/data/rawdata-*.conf
+dns/minios-*
+dns/data/output-*
+dns/data/result-*
+dns/data/input
+dns/app/server*.ml
+dns/app/deens*.mir
+dns/dns-perf.pdf
 _build/
 .fuse_hidden*
