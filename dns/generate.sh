@@ -4,6 +4,8 @@ export LC_ALL='C'
 
 RANGE=$(cat RANGE)
 
+[ ! -d "data" ] && mkdir data
+
 if [ ! -r "data/input" ]; then
   echo "mirage-perf.local" > data/input
   cut -f 1 -d "/" data/en_GB.dic | grep -v -- "[^a-zA-Z0-9-]" | grep -v -- "^-" >> data/input
@@ -60,5 +62,10 @@ for n in $RANGE ; do
   fi
   cd ..
 
+  # generate minios configs
+  if [ ! -r "minios-$n.conf" ]; then
+    sed "s/@NAME@/deens$n/g;s/@KERNEL@/deens$n.xen/g" minios.conf > minios-$n.conf
+  fi
+  
 done
 

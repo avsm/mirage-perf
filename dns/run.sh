@@ -74,26 +74,26 @@ xen_direct () {
 
   # spawn VM
   pushd app/_build
-  cp $ROOTDIR/minios-config .
-  sudo $XX create minios-config &
+  cp $ROOTDIR/minios-$n.conf .
+  sudo $XX create minios-$n.conf &
   popd
   
   sleep 5
   DEENSIP=10.0.0.2
   ping -c 3 ${DEENSIP}
 
-  perform input output
+  perform data/queryperf-$1.txt data/output-xen-direct-$1.txt
   sleep 3
   sudo $XX destroy deens$1
   sudo ifconfig perf0 down
   sudo brctl delbr perf0
   
-  sudo $XX console deens
+#  sudo $XX console deens
 }
 
 for n in $RANGE ; do
   unix_socket $n
   unix_direct $n
-#  xen_direct $n
+  xen_direct $n
 done
 
