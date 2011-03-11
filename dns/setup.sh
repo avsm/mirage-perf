@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash -ex
 
 ROOTDIR=$(pwd)
 
@@ -20,7 +20,9 @@ if [ ! -d dns-perf ]; then
   V=1.1
   mkdir -p dns-perf
   wget http://downloads.sourceforge.net/project/bind-dlz/DLZ%20Perf%20Tools/DLZPerfTools-${V}/DLZPerfTools-${V}.tar.gz
-  cd dns-perf && tar xzvf ../DLZPerfTools-${V}.tar.gz
+  pushd dns-perf
+  tar xzvf ../DLZPerfTools-${V}.tar.gz
+  popd
 fi
 
 # grab latest stable nsd3 since ubuntu package seems broken

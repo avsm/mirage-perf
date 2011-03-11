@@ -15,6 +15,7 @@ dictionary () {
 }
 
 zonefiles () {
+  cd ${ROOTDIR}
   n=$1
   
   # generate config files
@@ -22,7 +23,7 @@ zonefiles () {
     output="data/${f%.conf}-$n.conf"
     if [ ! -r "$output" ] ; then
       rm -f -- "$output"
-      sed "s/@NHOSTS@/$n/g" $f > $output
+      sed "s/@NHOSTS@/$n/g" ${f} > $output
     fi
   done
 
@@ -30,7 +31,7 @@ zonefiles () {
   if [ ! -r "data/raw-$n.csv" ] ; then
     for f in data/rawdata-$n.conf ; do
       rm -f -- "raw-$n.csv"
-      dlz-perf-tools/dnsDataGen.pl $f
+      obj/dns-perf/dnsDataGen.pl $f
     done
   fi
   
@@ -39,7 +40,7 @@ zonefiles () {
     for f in data/format-$n.conf ; do
       rm -rf -- "named-$n/"
       mkdir data/named-$n
-      dlz-perf-tools/dnsCSVDataReader.pl $f
+      obj/dns-perf/dnsCSVDataReader.pl $f
     done
   fi
 }
@@ -89,6 +90,8 @@ nsdconf () {
   sed "s!@ZONE@!${z}!g;s!@ZONEFILE@!${zf}!g" ${ROOTDIR}/nsd.conf > ./etc/nsd/nsd-$n.conf
   
   ./sbin/zonec -v -C -f $db -z $zf -o $z
+
+  popd
 }
 
   
