@@ -33,5 +33,16 @@ if [ ! -d nsd-install ]; then
   tar xzvf nsd-${V}.tar.gz
   pushd nsd-${V}
   ./configure --prefix=${ROOTDIR}/obj/nsd-install
-  make -j 16 && make install
+  make -j 16 && make all install
+fi
+
+# build latest bind 
+if [ ! -d bind9-install ]; then
+  V=9.7.3
+  mkdir bind9-install
+  wget http://ftp.isc.org/isc/bind9/${V}/bind-${V}.tar.gz  
+  tar -zxvf bind-${V}.tar.gz
+  cd bind-${V}
+  ./configure --prefix=${ROOTDIR}/obj/bind9-install
+  make -j 16 && make all install
 fi

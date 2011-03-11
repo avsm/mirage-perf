@@ -92,7 +92,7 @@ xen_direct () {
 }
 
 nsd3 () {
-  killall nsd || true
+  sudo killall nsd || true
   cd $ROOTDIR
   
   db=${ROOTDIR}/data/nsd-${n}.db
@@ -101,7 +101,7 @@ nsd3 () {
   z=$(grep zone ${zd}/named.conf-data | cut -d'"' -f 2)
 
   pushd obj/nsd-install
-  sudo ./sbin/nsd -c ./etc/nsd/nsd-$n.conf -f $db -P ./var/db/nsd/nsd.pid
+  sudo ./sbin/nsd -c $(pwd)/etc/nsd/nsd-$n.conf -f $db -P $(pwd)/var/db/nsd/nsd.pid
   serverpid=$(cat ${ROOTDIR}/obj/nsd-install/var/db/nsd/nsd.pid)
   popd
 
@@ -111,10 +111,25 @@ nsd3 () {
   sudo kill $serverpid || true
 }
 
+bind9 () {
+  sudo killall named || true
+  cd $ROOTDIR
+
+  sudo ./obj/bind9-install/sbin/named -c data/named-$n/named.conf-data 
+  serverpid=$(cat ${ROOTDIR}/obj/bind9-install/var/run/named/named.pid)
+
+  SERVERIP=127.0.0.1
+  perform data/queryperf-$1.txt data/output-bind9-unix-$1.txt
+
+  sudo kill $serverpid || true
+}
+
 for n in $RANGE ; do
-  unix_socket $n
-  unix_direct $n
-  xen_direct $n
-  nsd3 $n
+  # unix_socket $n
+  # unix_direct $n
+  # xen_direct $n
+  # nsd3 $n
+  bind9 $n
+         
 done
 

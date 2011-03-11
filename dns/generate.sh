@@ -41,6 +41,12 @@ zonefiles () {
       rm -rf -- "named-$n/"
       mkdir data/named-$n
       obj/dns-perf/dnsCSVDataReader.pl $f
+
+      zd=${ROOTDIR}/data/named-${n}
+      zf=${ROOTDIR}/$(grep file ${zd}/named.conf-data | cut -d '"' -f 2)
+      echo "ns1	10	IN	a	127.0.0.1" >> $zf
+      echo "ns2	10	IN	a	127.0.0.1" >> $zf
+
     done
   fi
 }
