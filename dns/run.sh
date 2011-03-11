@@ -17,7 +17,7 @@ XENV=$(cat ${_SHV}/major).$(cat ${_SHV}/minor)
 RANGE=$(cat RANGE)
 SHORTRUN=2
 LONGRUN=30
-DEENSIP=0.0.0.0
+SERVERIP=0.0.0.0
 
 compile () {
   pushd $ROOTDIR/app
@@ -27,8 +27,8 @@ compile () {
 
 perform () {
   pushd $ROOTDIR
-  queryperf -l ${SHORTRUN} -s ${DEENSIP} < $1 
-  queryperf -l ${LONGRUN} -s ${DEENSIP} < $1 > $2
+  queryperf -l ${SHORTRUN} -s ${SERVERIP} < $1 
+  queryperf -l ${LONGRUN} -s ${SERVERIP} < $1 > $2
   popd
 }
 
@@ -40,7 +40,7 @@ unix_socket () {
   sleep 2
   serverpid=$!
 
-  DEENSIP=127.0.0.1
+  SERVERIP=127.0.0.1
   perform data/queryperf-$1.txt data/output-unix-socket-$1.txt
   
   sudo kill $serverpid || true
@@ -55,7 +55,7 @@ unix_direct () {
   sleep 2
   serverpid=$!
 
-  DEENSIP=10.0.0.2
+  SERVERIP=10.0.0.2
   perform data/queryperf-$1.txt data/output-unix-direct-$1.txt
 
   sudo kill $serverpid || true
@@ -79,8 +79,8 @@ xen_direct () {
   popd
   
   sleep 5
-  DEENSIP=10.0.0.2
-  ping -c 3 ${DEENSIP}
+  SERVERIP=10.0.0.2
+  ping -c 3 ${SERVERIP}
 
   perform data/queryperf-$1.txt data/output-xen-direct-$1.txt
   sleep 3
@@ -92,7 +92,7 @@ xen_direct () {
 }
 
 nsd3 () {
-  killall nsd
+  killall nsd || true
   cd $ROOTDIR
   
   db=${ROOTDIR}/data/nsd-${n}.db
@@ -105,6 +105,7 @@ nsd3 () {
   serverpid=$(cat ${ROOTDIR}/obj/nsd-install/var/db/nsd/nsd.pid)
   popd
 
+  SERVERIP=127.0.0.1
   perform data/queryperf-$1.txt data/output-nsd-unix-$1.txt
 
   sudo kill $serverpid || true
