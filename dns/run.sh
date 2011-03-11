@@ -88,12 +88,32 @@ xen_direct () {
   sudo ifconfig perf0 down
   sudo brctl delbr perf0
   
-#  sudo $XX console deens
+  #  sudo $XX console deens
+}
+
+nsd3 () {
+  killall nsd
+  cd $ROOTDIR
+  
+  db=${ROOTDIR}/data/nsd-${n}.db
+  zd=${ROOTDIR}/data/named-${n}
+  zf=${ROOTDIR}/$(grep file ${zd}/named.conf-data | cut -d '"' -f 2)
+  z=$(grep zone ${zd}/named.conf-data | cut -d'"' -f 2)
+
+  pushd obj/nsd-install
+  sudo ./sbin/nsd -c ./etc/nsd/nsd-$n.conf -f $db -P ./var/db/nsd/nsd.pid
+  serverpid=$(cat ${ROOTDIR}/obj/nsd-install/var/db/nsd/nsd.pid)
+  popd
+
+  perform data/queryperf-$1.txt data/output-nsd-unix-$1.txt
+
+  sudo kill $serverpid || true
 }
 
 for n in $RANGE ; do
   unix_socket $n
   unix_direct $n
   xen_direct $n
+  nsd3 $n
 done
 

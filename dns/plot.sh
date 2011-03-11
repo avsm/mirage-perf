@@ -7,7 +7,6 @@ rm -f result-*.txt
 
 awk -- '
     /Queries per second/ {
-#        print FILENAME, $4 
         split(FILENAME, ns, "[.-]");
         fn = sprintf("result-%s-%s.txt", ns[2], ns[3]);
         printf("%s %s\n", ns[4], $4) >> fn;

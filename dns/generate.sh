@@ -1,17 +1,21 @@
-#!/bin/sh -ex
+#!/bin/bash -ex
 
 export LC_ALL='C'
 
+ROOTDIR=$(pwd)
 RANGE=$(cat RANGE)
 
 [ ! -d "data" ] && mkdir data
 
-if [ ! -r "data/input" ]; then
-  echo "mirage-perf.local" > data/input
-  cut -f 1 -d "/" data/en_GB.dic | grep -v -- "[^a-zA-Z0-9-]" | grep -v -- "^-" >> data/input
-fi
+dictionary () {
+  if [ ! -r "data/input" ]; then
+    echo "mirage-perf.local" > data/input
+    cut -f 1 -d "/" data/en_GB.dic | grep -v -- "[^a-zA-Z0-9-]" | grep -v -- "^-" >> data/input
+  fi
+}
 
-for n in $RANGE ; do
+zonefiles () {
+  n=$1
   
   # generate config files
   for f in rawdata.conf format.conf ; do
@@ -29,7 +33,7 @@ for n in $RANGE ; do
       dlz-perf-tools/dnsDataGen.pl $f
     done
   fi
-
+  
   # convert CSV DNS data to zonefiles
   if [ ! -r "data/named-$n" ]; then
     for f in data/format-$n.conf ; do
@@ -38,9 +42,13 @@ for n in $RANGE ; do
       dlz-perf-tools/dnsCSVDataReader.pl $f
     done
   fi
-
+}
+  
+servers () {
+  n=$1
+  
   # generate server code
-  cd app
+  pushd app
   if [ ! -r "app/server$n.ml" ]; then
     for f in serverTemplate.ml ; do
       rm -f -- "server$n.ml" "deens$n.mir"
@@ -60,12 +68,34 @@ for n in $RANGE ; do
       mv server$n.ml.tmp server$n.ml
     done
   fi
-  cd ..
+  popd
 
   # generate minios configs
   if [ ! -r "minios-$n.conf" ]; then
-    sed "s/@NAME@/deens$n/g;s/@KERNEL@/deens$n.xen/g" minios.conf > minios-$n.conf
+    sed "s!@NAME@!deens$n!g;s!@KERNEL@!deens$n.xen!g" minios.conf > minios-$n.conf
   fi
+}
+
+nsdconf () {
+  n=$1
+
+  pushd obj/nsd-install
   
+  db=${ROOTDIR}/data/nsd-${n}.db
+  zd=${ROOTDIR}/data/named-${n}
+  zf=${ROOTDIR}/$(grep file ${zd}/named.conf-data | cut -d '"' -f 2)
+  z=$(grep zone ${zd}/named.conf-data | cut -d'"' -f 2)
+
+  sed "s!@ZONE@!${z}!g;s!@ZONEFILE@!${zf}!g" ${ROOTDIR}/nsd.conf > ./etc/nsd/nsd-$n.conf
+  
+  ./sbin/zonec -v -C -f $db -z $zf -o $z
+}
+
+  
+dictionary
+for n in $RANGE ; do
+  zonefiles $n
+  servers $n
+  nsdconf $n
 done
 
