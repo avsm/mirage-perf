@@ -19,6 +19,12 @@ SHORTRUN=2
 LONGRUN=30
 SERVERIP=0.0.0.0
 
+# oprofile options; for a pvops kernel, you need
+# this kernel: http://github.com/avsm/linux-2.6.32-xen-oprofile
+PROFILING=${PROFILING:-0}
+# point to the xen symbol file
+XEN_SYMS=/boot/xen-syms-4.1.0-rc7-pre
+
 compile () {
   pushd $ROOTDIR/app
   [ "$1" = "xen" ] && mir-$1 deens$2.xen || mir-$1 deens$2.bin
@@ -75,14 +81,34 @@ xen_direct () {
   # spawn VM
   pushd app/_build
   cp $ROOTDIR/minios-$n.conf .
-  sudo $XX create minios-$n.conf &
+  sudo $XX create -p minios-$n.conf &
   popd
   
-  sleep 5
+  sleep 2
+  DOMNAME=deens$n
+  DOMID=`sudo $XX domid $DOMNAME`
+  
+  if [ ${PROFILING} -gt 0 ]; then
+    sudo opcontrol --reset
+    sudo opcontrol --shutdown
+    sudo opcontrol --start-daemon --event=CPU_CLK_UNHALTED:1000000 --xen=${XEN_SYMS} \
+      --passive-domains=${DOMID} --passive-images=${ROOTDIR}/app/_build/${DOMNAME}.xen --no-vmlinux
+    sudo opcontrol --start
+  fi
+
+  sudo $XX unpause $DOMNAME
+  sleep 1
+
   SERVERIP=10.0.0.2
   ping -c 3 ${SERVERIP}
 
   perform data/queryperf-$1.txt data/output-xen-direct-$1.txt
+
+  if [ ${PROFILING} -gt 0 ]; then
+    sudo opcontrol --stop
+    opreport -l | grep domain${DOMID} > data/oprofile-raw-xen-direct-$1.txt
+  fi
+
   sleep 3
   sudo $XX destroy deens$1
   sudo ifconfig perf0 down
@@ -127,9 +153,9 @@ bind9 () {
 for n in $RANGE ; do
   # unix_socket $n
   # unix_direct $n
-  # xen_direct $n
+  xen_direct $n
   # nsd3 $n
-  bind9 $n
+  # bind9 $n
          
 done
 
