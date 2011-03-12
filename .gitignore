@@ -17,3 +17,4 @@ dns/app/deens*.mir
 dns/dns-perf.pdf
 _build/
 .fuse_hidden*
+dns/data/nsd-*.db
