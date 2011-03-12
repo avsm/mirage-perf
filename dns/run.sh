@@ -27,8 +27,8 @@ compile () {
 
 perform () {
   pushd $ROOTDIR
-  queryperf -l ${SHORTRUN} -s ${SERVERIP} < $1 
-  queryperf -l ${LONGRUN} -s ${SERVERIP} < $1 > $2
+  ./queryperf -l ${SHORTRUN} -s ${SERVERIP} < $1 
+  ./queryperf -l ${LONGRUN} -s ${SERVERIP} < $1 > $2
   popd
 }
 
@@ -114,7 +114,7 @@ nsd3 () {
 bind9 () {
   sudo killall named || true
   cd $ROOTDIR
-
+  sudo chmod 777 ./obj/bind9-install/var/run/named || true
   sudo ./obj/bind9-install/sbin/named -c data/named-$n/named.conf-data 
   serverpid=$(cat ${ROOTDIR}/obj/bind9-install/var/run/named/named.pid)
 
