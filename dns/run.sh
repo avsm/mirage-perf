@@ -1,6 +1,15 @@
 #!/bin/bash -ex
 # Performance tests for DNS
 
+RANGE=$(cat RANGE)
+SHORTRUN=2
+LONGRUN=30
+SERVERIP=$(cat SERVERIP)
+CLIENTIP=$(cat CLIENTIP)
+PASSWORD=$(cat PASSWORD)
+SERVER="sshpass -p $PASSWORD ssh -o StrictHostKeyChecking=no root@$SERVERIP"
+CLIENT="sshpass -p $PASSWORD ssh -o StrictHostKeyChecking=no root@$CLIENTIP"
+
 if [ -z "$(which mir-unix-socket)" ]; then
   echo 'Add mirage tools to your path!'
   exit
@@ -9,15 +18,32 @@ fi
 sudo echo 'Ensuring we have sudo credentials... done!'
 ROOTDIR=$(pwd)
 
+# ensure perf0 bridge exists
+bridge_reset () {
+  sudo ifconfig perf0 down || true
+  sudo brctl delbr perf0 || true
+  sudo brctl addbr perf0
+  sudo brctl setfd perf0 0
+  sudo brctl sethello perf0 0
+  sudo brctl stp perf0 off
+  sudo ifconfig perf0 10.0.0.1 netmask 255.255.255.0
+  sudo ifconfig perf0 up
+}
+  
 # deal with tool name change between versions
 _SHV=/sys/hypervisor/version
 XENV=$(cat ${_SHV}/major).$(cat ${_SHV}/minor)
 [ "${XENV}" = "4.1" ] && XX=xl || XX=xm
 
-RANGE=$(cat RANGE)
-SHORTRUN=2
-LONGRUN=30
-SERVERIP=0.0.0.0
+bridge_reset
+sudo xm mem-set 0 2G
+sudo xm create $ROOTDIR/obj/xen-images/client.mirage-perf.local.cfg || true
+sudo xm create $ROOTDIR/obj/xen-images/server.mirage-perf.local.cfg || true
+
+while true; do
+  sleep 5  
+  $SERVER "modprobe tun" && break
+done
 
 # oprofile options; for a pvops kernel, you need
 # this kernel: http://github.com/avsm/linux-2.6.32-xen-oprofile
@@ -25,137 +51,105 @@ PROFILING=${PROFILING:-0}
 # point to the xen symbol file
 XEN_SYMS=/boot/xen-syms-4.1.0-rc7-pre
 
-compile () {
-  pushd $ROOTDIR/app
-  [ "$1" = "xen" ] && mir-$1 deens$2.xen || mir-$1 deens$2.bin
-  popd
-}
-
-perform () {
-  pushd $ROOTDIR
-  ./queryperf -l ${SHORTRUN} -s ${SERVERIP} < $1 
-  ./queryperf -l ${LONGRUN} -s ${SERVERIP} < $1 > $2
-  popd
-}
-
 unix_socket () {
-  cd $ROOTDIR
-  compile unix-socket $1
-  
-  sudo ./app/_build/deens$1.bin &
+  $SERVER "./deens$1-socket.bin" &
   sleep 2
-  serverpid=$!
-
-  SERVERIP=127.0.0.1
-  perform data/queryperf-$1.txt data/output-unix-socket-$1.txt
   
-  sudo kill $serverpid || true
+  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < queryperf-$1.txt"
+  $CLIENT "./queryperf -l ${LONGRUN} -s ${SERVERIP} < queryperf-$1.txt" >| data/output-unix-socket-$1.txt
+
+  $SERVER 'kill $(ps x | grep deens | grep -v grep | tr -s " " | cut -f 2 -d " ")'
 }
 
 unix_direct () {
-  cd $ROOTDIR
-  sudo modprobe tun
-  compile unix-direct $1
-
-  sudo ./app/_build/deens$1.bin &
+  $SERVER "./deens$1-direct.bin" &
   sleep 2
-  serverpid=$!
 
-  SERVERIP=10.0.0.2
-  perform data/queryperf-$1.txt data/output-unix-direct-$1.txt
+  SERVERIP=10.0.0.10
+  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < queryperf-$1.txt"
+  $CLIENT "./queryperf -l ${LONGRUN} -s ${SERVERIP} < queryperf-$1.txt" >| data/output-unix-direct-$1.txt
 
-  sudo kill $serverpid || true
+  $SERVER 'kill $(ps x | grep deens | grep -v grep | tr -s " " | cut -f 2 -d " ")'
 }
+
+bind9 () {
+  $SERVER "./bind9-install/sbin/named -c ./data/named-$1/named.conf-data" &
+  sleep 2
+  
+  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < queryperf-$1.txt"
+  $CLIENT "./queryperf -l ${LONGRUN} -s ${SERVERIP} < queryperf-$1.txt" >| data/output-bind9-unix-$1.txt
+
+  $SERVER 'kill $(ps x | grep named | grep -v grep | tr -s " " | cut -f 2 -d " ")' || true
+}
+
+nsd3 () {
+
+  zf=$(grep file ./data/named-$1/named.conf-data | cut -d '"' -f 2)
+  z=$(grep zone ./data/named-$1/named.conf-data | cut -d'"' -f 2)
+  
+  $SERVER "./nsd-install/sbin/zonec -v -C -f ./data/nsd-$1.db -z $zf -o $z"
+  $SERVER "./nsd-install/sbin/nsd -c ./nsd-install/etc/nsd/nsd-$1.conf -f ./data/nsd-$1.db" 
+
+  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < queryperf-$1.txt"
+  $CLIENT "./queryperf -l ${LONGRUN} -s ${SERVERIP} < queryperf-$1.txt" >| data/output-nsd-unix-$1.txt
+
+  $SERVER 'kill $(ps x | grep nsd | grep -v grep | tr -s " " | cut -f 2 -d " ")'
+}
+
+for n in $RANGE ; do
+  nsd3 $n
+  bind9 $n
+  unix_socket $n
+  #  unix_direct $n
+done
+sudo xm shutdown server.mirage-perf.local
+sudo xm shutdown client.mirage-perf.local
+sleep 5
 
 xen_direct () {
   cd $ROOTDIR
-  compile xen $1
-
-  sudo brctl addbr perf0 || true
-  sudo brctl setfd perf0 0
-  sudo brctl sethello perf0 0
-  sudo brctl stp perf0 off
-  sudo ifconfig perf0 10.0.0.1 netmask 255.255.255.0
-  sudo ifconfig perf0 up
-
-  # spawn VM
-  pushd app/_build
-  cp $ROOTDIR/minios-$n.conf .
-  sudo $XX create -p minios-$n.conf &
+  bridge_reset
+  
+  # spawn VMs
+  sudo xm create $ROOTDIR/obj/xen-images/client.mirage-perf.local.cfg
+  sleep 3
+  pushd app/
+  sudo $XX create -p ../data/minios-$n.conf &
   popd
   
   sleep 2
   DOMNAME=deens$n
-  DOMID=`sudo $XX domid $DOMNAME`
+  DOMID=$(sudo $XX domid $DOMNAME)
   
   if [ ${PROFILING} -gt 0 ]; then
     sudo opcontrol --reset
     sudo opcontrol --shutdown
     sudo opcontrol --start-daemon --event=CPU_CLK_UNHALTED:1000000 --xen=${XEN_SYMS} \
-      --passive-domains=${DOMID} --passive-images=${ROOTDIR}/app/_build/${DOMNAME}.xen --no-vmlinux
+      --passive-domains=${DOMID} --passive-images=${ROOTDIR}/app/${DOMNAME}.xen --no-vmlinux
     sudo opcontrol --start
   fi
 
+  # queryperf tests
   sudo $XX unpause $DOMNAME
   sleep 1
 
-  SERVERIP=10.0.0.2
-  ping -c 3 ${SERVERIP}
+  ping -c 3 $SERVERIP
 
-  perform data/queryperf-$1.txt data/output-xen-direct-$1.txt
+  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < queryperf-$1.txt"
+  $CLIENT "./queryperf -l ${LONGRUN} -s ${SERVERIP} < queryperf-$1.txt" >| data/output-xen-direct-$1.txt
 
   if [ ${PROFILING} -gt 0 ]; then
     sudo opcontrol --stop
     opreport -l | grep domain${DOMID} > data/oprofile-raw-xen-direct-$1.txt
   fi
 
+  # cleanup
   sleep 3
-  sudo $XX destroy deens$1
-  sudo ifconfig perf0 down
-  sudo brctl delbr perf0
-  
-  #  sudo $XX console deens
-}
-
-nsd3 () {
-  sudo killall nsd || true
-  cd $ROOTDIR
-  
-  db=${ROOTDIR}/data/nsd-${n}.db
-  zd=${ROOTDIR}/data/named-${n}
-  zf=${ROOTDIR}/$(grep file ${zd}/named.conf-data | cut -d '"' -f 2)
-  z=$(grep zone ${zd}/named.conf-data | cut -d'"' -f 2)
-
-  pushd obj/nsd-install
-  sudo ./sbin/nsd -c $(pwd)/etc/nsd/nsd-$n.conf -f $db -P $(pwd)/var/db/nsd/nsd.pid
-  serverpid=$(cat ${ROOTDIR}/obj/nsd-install/var/db/nsd/nsd.pid)
-  popd
-
-  SERVERIP=127.0.0.1
-  perform data/queryperf-$1.txt data/output-nsd-unix-$1.txt
-
-  sudo kill $serverpid || true
-}
-
-bind9 () {
-  sudo killall named || true
-  cd $ROOTDIR
-  sudo chmod 777 ./obj/bind9-install/var/run/named || true
-  sudo ./obj/bind9-install/sbin/named -c data/named-$n/named.conf-data 
-  serverpid=$(cat ${ROOTDIR}/obj/bind9-install/var/run/named/named.pid)
-
-  SERVERIP=127.0.0.1
-  perform data/queryperf-$1.txt data/output-bind9-unix-$1.txt
-
-  sudo kill $serverpid || true
+  sudo $XX destroy $DOMNAME
+  sudo xm shutdown client.mirage-perf.local
+  sleep 5
 }
 
 for n in $RANGE ; do
-  # unix_socket $n
-  # unix_direct $n
   xen_direct $n
-  # nsd3 $n
-  # bind9 $n
-         
 done
-
