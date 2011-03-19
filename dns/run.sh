@@ -36,9 +36,9 @@ XENV=$(cat ${_SHV}/major).$(cat ${_SHV}/minor)
 [ "${XENV}" = "4.1" ] && XX=xl || XX=xm
 
 bridge_reset
-sudo xm mem-set 0 2G
-sudo xm create $ROOTDIR/obj/xen-images/client.mirage-perf.local.cfg || true
-sudo xm create $ROOTDIR/obj/xen-images/server.mirage-perf.local.cfg || true
+sudo $XX mem-set 0 2G
+sudo $XX create $ROOTDIR/obj/xen-images/client.mirage-perf.local.cfg || true
+sudo $XX create $ROOTDIR/obj/xen-images/server.mirage-perf.local.cfg || true
 
 while true; do
   sleep 5  
@@ -102,8 +102,8 @@ for n in $RANGE ; do
   unix_socket $n
   #  unix_direct $n
 done
-sudo xm shutdown server.mirage-perf.local
-sudo xm shutdown client.mirage-perf.local
+sudo $XX shutdown server.mirage-perf.local
+sudo $XX shutdown client.mirage-perf.local
 sleep 5
 
 xen_direct () {
@@ -111,7 +111,7 @@ xen_direct () {
   bridge_reset
   
   # spawn VMs
-  sudo xm create $ROOTDIR/obj/xen-images/client.mirage-perf.local.cfg
+  sudo $XX create $ROOTDIR/obj/xen-images/client.mirage-perf.local.cfg
   sleep 3
   pushd app/
   sudo $XX create -p ../data/minios-$n.conf &
@@ -146,7 +146,7 @@ xen_direct () {
   # cleanup
   sleep 3
   sudo $XX destroy $DOMNAME
-  sudo xm shutdown client.mirage-perf.local
+  sudo $XX shutdown client.mirage-perf.local
   sleep 5
 }
 
