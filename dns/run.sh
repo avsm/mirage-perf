@@ -18,6 +18,12 @@ fi
 sudo echo 'Ensuring we have sudo credentials... done!'
 ROOTDIR=$(pwd)
 
+function nooffload {
+   for i in rx tx sg tso ufo gso gro lro; do
+     sudo ethtool -K $1 $i off || true
+   done
+}
+
 # ensure perf0 bridge exists
 bridge_reset () {
   sudo ifconfig perf0 down || true
@@ -28,6 +34,7 @@ bridge_reset () {
   sudo brctl stp perf0 off
   sudo ifconfig perf0 10.0.0.1 netmask 255.255.255.0
   sudo ifconfig perf0 up
+  nooffload perf0
 }
   
 # deal with tool name change between versions
@@ -36,14 +43,17 @@ XENV=$(cat ${_SHV}/major).$(cat ${_SHV}/minor)
 [ "${XENV}" = "4.1" ] && XX=xl || XX=xm
 
 bridge_reset
-sudo xm mem-set 0 2G
-sudo xm create $ROOTDIR/obj/xen-images/client.mirage-perf.local.cfg || true
-sudo xm create $ROOTDIR/obj/xen-images/server.mirage-perf.local.cfg || true
+sudo ${XX} mem-set 0 1G
+sudo ${XX} create $ROOTDIR/obj/xen-images/client.mirage-perf.local.cfg || true
+sudo ${XX} create $ROOTDIR/obj/xen-images/server.mirage-perf.local.cfg || true
 
 while true; do
   sleep 5  
   $SERVER "modprobe tun" && break
 done
+
+nooffload vif`sudo ${XX} domid client.mirage-perf.local`.0
+nooffload vif`sudo ${XX} domid server.mirage-perf.local`.0
 
 # oprofile options; for a pvops kernel, you need
 # this kernel: http://github.com/avsm/linux-2.6.32-xen-oprofile
@@ -101,9 +111,10 @@ for n in $RANGE ; do
   bind9 $n
   unix_socket $n
   #  unix_direct $n
+  echo .
 done
-sudo xm shutdown server.mirage-perf.local
-sudo xm shutdown client.mirage-perf.local
+sudo ${XX} destroy server.mirage-perf.local
+sudo ${XX} destroy client.mirage-perf.local
 sleep 5
 
 xen_direct () {
@@ -111,8 +122,9 @@ xen_direct () {
   bridge_reset
   
   # spawn VMs
-  sudo xm create $ROOTDIR/obj/xen-images/client.mirage-perf.local.cfg
+  sudo $XX create $ROOTDIR/obj/xen-images/client.mirage-perf.local.cfg
   sleep 3
+
   pushd app/
   sudo $XX create -p ../data/minios-$n.conf &
   popd
@@ -134,6 +146,7 @@ xen_direct () {
   sleep 1
 
   ping -c 3 $SERVERIP
+  ping -c 3 $CLIENTIP
 
   $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < queryperf-$1.txt"
   $CLIENT "./queryperf -l ${LONGRUN} -s ${SERVERIP} < queryperf-$1.txt" >| data/output-xen-direct-$1.txt
@@ -146,7 +159,7 @@ xen_direct () {
   # cleanup
   sleep 3
   sudo $XX destroy $DOMNAME
-  sudo xm shutdown client.mirage-perf.local
+  sudo $XX destroy client.mirage-perf.local
   sleep 5
 }
 
