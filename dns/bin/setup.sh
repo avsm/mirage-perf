@@ -1,4 +1,12 @@
 #!/bin/bash -ex
+#
+# mirage-perf DNS experiments: setup environment, including building
+# domUs
+#
+# NB. this pulls and installs a variety of packages, most locally but
+# a few are installed via apt-get
+#
+# Richard Mortier <mort@cantab.net>
 
 [ ! -r PASSWORD ] && ( echo Please set password in ./PASSWORD ; exit 1 )
 

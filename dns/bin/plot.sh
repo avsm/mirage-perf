@@ -1,4 +1,8 @@
 #!/bin/bash -ex
+#
+# mirage-perf DNS experiments: plot results from run.sh
+#
+# Richard Mortier <mort@cantab.net>
 
 ROOTDIR=$(pwd)
 
