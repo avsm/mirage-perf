@@ -82,7 +82,7 @@ servers () {
   popd
 
   # generate minios configs
-  if [ ! -r "minios-$n.conf" ]; then
+  if [ ! -r "data/minios-$n.conf" ]; then
     sed "s!@NAME@!deens$n!g;s!@KERNEL@!deens$n.xen!g" minios.conf > ./data/minios-$n.conf
   fi
 }
