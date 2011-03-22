@@ -8,20 +8,21 @@
 #
 # Richard Mortier <mort@cantab.net>
 
-[ ! -r PASSWORD ] && ( echo Please set password in ./PASSWORD ; exit 1 )
+ROOTDIR=$(cd $(dirname $0)/.. 2>/dev/null; pwd -P)
+[ ! -d $ROOTDIR/obj ] && mkdir -p $ROOTDIR/obj
+pushd $ROOTDIR/obj
 
-ROOTDIR=$(pwd)
-SERVERIP=$(cat SERVERIP)
-CLIENTIP=$(cat CLIENTIP)
-PASSWORD=$(cat PASSWORD)
-                        
-[ ! -d obj ] && mkdir -p obj
-cd obj
+# check password existence
+if [ ! -r $ROOTDIR/cfg/PASSWORD ]; then
+  echo Please set password in $ROOTDIR/cfg/PASSWORD
+  exit 1
+fi
 
 # pull en_GB dictonary
 if [ ! -d dictionary ]; then
   mkdir dictionary
   pushd dictionary
+
   wget http://en-gb.pyxidium.co.uk/dictionary/en_GB.zip
 
   unzip en_GB.zip
@@ -36,6 +37,7 @@ if [ ! -x ../queryperf ]; then
   V=9.7.3
   wget http://ftp.isc.org/isc/bind9/${V}/bind-${V}.tar.gz
   tar -zxvf bind-${V}.tar.gz
+  
   pushd bind-${V}/contrib/queryperf
   ./configure && make
   cp queryperf ../../../..
@@ -47,6 +49,7 @@ if [ ! -d dns-perf ]; then
   V=1.1
   mkdir -p dns-perf
   wget http://downloads.sourceforge.net/project/bind-dlz/DLZ%20Perf%20Tools/DLZPerfTools-${V}/DLZPerfTools-${V}.tar.gz
+
   pushd dns-perf
   tar xzvf ../DLZPerfTools-${V}.tar.gz
   popd
@@ -70,6 +73,7 @@ if [ ! -d bind9-install ]; then
   mkdir bind9-install
   wget http://ftp.isc.org/isc/bind9/${V}/bind-${V}.tar.gz  
   tar -zxvf bind-${V}.tar.gz
+
   pushd bind-${V}
   ./configure --prefix=${ROOTDIR}/obj/bind9-install
   make -j 16 && make all install
@@ -81,6 +85,7 @@ if [ ! -d xen-tools ]; then
   #  git clone git://gitorious.org/xen-tools/xen-tools.git
   git clone git://github.com/mor1/xen-tools.git
   sudo apt-get install debootstrap libfile-slurp-perl libtext-template-perl
+
   pushd xen-tools
   sudo make install
   popd
@@ -90,7 +95,11 @@ fi
 if [ ! -d xen-images ]; then
   sudo apt-get install sshpass
   mkdir xen-images
-  
+
+  SERVERIP=$(cat $ROOTDIR/cfg/SERVERIP)
+  CLIENTIP=$(cat $ROOTDIR/cfg/CLIENTIP)
+  PASSWORD=$(cat $ROOTDIR/cfg/PASSWORD)
+
   sudo http_proxy=$http_proxy \
     xen-create-image --force --verbose --password=$PASSWORD \
     --output=$(pwd)/xen-images --dir=$(pwd)/xen-images \
@@ -102,7 +111,6 @@ if [ ! -d xen-images ]; then
     --output=$(pwd)/xen-images --dir=$(pwd)/xen-images \
     --hostname=client.mirage-perf.local --bridge=perf0 \
     --ip=${CLIENTIP} --gateway=10.0.0.1 --netmask=10.0.0.255 
-
 fi
 
 # update domUs regardless
@@ -122,3 +130,5 @@ sudo mount -o loop ./xen-images/domains/server.mirage-perf.local/disk.img ./m
 sudo cp -r nsd-install $R/nsd-install
 sudo cp -r bind9-install $R/bind9-install
 sudo umount ./m
+
+popd

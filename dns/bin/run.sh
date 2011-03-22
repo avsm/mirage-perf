@@ -1,27 +1,52 @@
 #!/bin/bash -ex
-# Performance tests for DNS
+#
+# mirage-perf DNS experiments: run experiments
+#
+# Anil Madhavapeddy <anil@recoil.org>
+# Richard Mortier <mort@cantab.net>
 
-RANGE=$(cat RANGE)
-SHORTRUN=2
-LONGRUN=30
-SERVERIP=$(cat SERVERIP)
-CLIENTIP=$(cat CLIENTIP)
-PASSWORD=$(cat PASSWORD)
-SERVER="sshpass -p $PASSWORD ssh -o StrictHostKeyChecking=no root@$SERVERIP"
-CLIENT="sshpass -p $PASSWORD ssh -o StrictHostKeyChecking=no root@$CLIENTIP"
+sudo echo 'Ensuring we have sudo credentials... done!'
 
 if [ -z "$(which mir-unix-socket)" ]; then
   echo 'Add mirage tools to your path!'
   exit
 fi
 
-sudo echo 'Ensuring we have sudo credentials... done!'
-ROOTDIR=$(pwd)
+ROOTDIR=$(cd $(dirname $0)/.. 2>/dev/null; pwd -P)
+pushd $ROOTDIR
 
-function nooffload {
-   for i in rx tx sg tso ufo gso gro lro; do
-     sudo ethtool -K $1 $i off || true
-   done
+RANGE=$1
+[ -z "$RANGE" ] && RANGE=$(cat ./cfg/RANGE)
+
+EXPT=$2
+[ -z "$EXPT" ] && EXPT=all
+
+SHORTRUN=$(cat ./cfg/SHORTRUN)
+LONGRUN=$(cat ./cfg/LONGRUN)
+
+SERVERIP=$(cat ./cfg/SERVERIP)
+CLIENTIP=$(cat ./cfg/CLIENTIP)
+PASSWORD=$(cat ./cfg/PASSWORD)
+SERVER="sshpass -p $PASSWORD ssh -o StrictHostKeyChecking=no root@$SERVERIP"
+CLIENT="sshpass -p $PASSWORD ssh -o StrictHostKeyChecking=no root@$CLIENTIP"
+  
+# deal with tool name change between versions
+_SHV=/sys/hypervisor/version
+XENV=$(cat ${_SHV}/major).$(cat ${_SHV}/minor)
+[ "${XENV}" = "4.1" ] && XX=xl || XX=xm
+
+# oprofile options; for a pvops kernel, you need
+# this kernel: http://github.com/avsm/linux-2.6.32-xen-oprofile
+PROFILING=${PROFILING:-0}
+# point to the xen symbol file
+XEN_SYMS=/boot/xen-syms-4.1.0-rc7-pre
+
+# ensure all card offload functions are turned off as mirage doesn't support them.
+# yet.
+nooffload () {
+  for i in rx tx sg tso ufo gso gro lro; do
+    sudo ethtool -K $1 $i off || true
+  done
 }
 
 # ensure perf0 bridge exists
@@ -36,30 +61,6 @@ bridge_reset () {
   sudo ifconfig perf0 up
   nooffload perf0
 }
-  
-# deal with tool name change between versions
-_SHV=/sys/hypervisor/version
-XENV=$(cat ${_SHV}/major).$(cat ${_SHV}/minor)
-[ "${XENV}" = "4.1" ] && XX=xl || XX=xm
-
-bridge_reset
-sudo ${XX} mem-set 0 1G
-sudo ${XX} create $ROOTDIR/obj/xen-images/client.mirage-perf.local.cfg || true
-sudo ${XX} create $ROOTDIR/obj/xen-images/server.mirage-perf.local.cfg || true
-
-while true; do
-  sleep 5  
-  $SERVER "modprobe tun" && break
-done
-
-nooffload vif`sudo ${XX} domid client.mirage-perf.local`.0
-nooffload vif`sudo ${XX} domid server.mirage-perf.local`.0
-
-# oprofile options; for a pvops kernel, you need
-# this kernel: http://github.com/avsm/linux-2.6.32-xen-oprofile
-PROFILING=${PROFILING:-0}
-# point to the xen symbol file
-XEN_SYMS=/boot/xen-syms-4.1.0-rc7-pre
 
 unix_socket () {
   $SERVER "./deens$1-socket.bin" &
@@ -105,17 +106,6 @@ nsd3 () {
 
   $SERVER 'kill $(ps x | grep nsd | grep -v grep | tr -s " " | cut -f 2 -d " ")'
 }
-
-for n in $RANGE ; do
-  nsd3 $n
-  bind9 $n
-  unix_socket $n
-  #  unix_direct $n
-  echo .
-done
-sudo ${XX} destroy server.mirage-perf.local
-sudo ${XX} destroy client.mirage-perf.local
-sleep 5
 
 xen_direct () {
   cd $ROOTDIR
@@ -163,6 +153,31 @@ xen_direct () {
   sleep 5
 }
 
+bridge_reset
+sudo ${XX} mem-set 0 1G
+sudo ${XX} create $ROOTDIR/obj/xen-images/client.mirage-perf.local.cfg || true
+sudo ${XX} create $ROOTDIR/obj/xen-images/server.mirage-perf.local.cfg || true
+
+while true; do
+  sleep 5  
+  $SERVER "modprobe tun" && break
+done
+
+nooffload vif$(sudo ${XX} domid client.mirage-perf.local).0
+nooffload vif$(sudo ${XX} domid server.mirage-perf.local).0
+
 for n in $RANGE ; do
-  xen_direct $n
+  ( [ "$EXPT" == "nsd" ] || [ "$EXPT" == "all" ] ) && nsd3 $n || true
+  ( [ "$EXPT" == "bind" ] || [ "$EXPT" == "all" ] ) && bind9 $n || true
+  ( [ "$EXPT" == "unix-socket" ] || [ "$EXPT" == "all" ] ) && unix_socket $n || true
+  ( [ "$EXPT" == "unix-direct" ] || [ "$EXPT" == "all" ] ) && unix_direct $n || true
+  echo .
+done
+
+sudo ${XX} shutdown server.mirage-perf.local
+sudo ${XX} shutdown client.mirage-perf.local
+sleep 5
+
+for n in $RANGE ; do
+  ( [ "$EXPT" == "xen-direct" ] || [ "$EXPT" == "all" ] ) && xen_direct $n || true
 done

@@ -4,9 +4,9 @@
 #
 # Richard Mortier <mort@cantab.net>
 
-ROOTDIR=$(pwd)
+ROOTDIR=$(cd $(dirname $0)/.. 2>/dev/null; pwd -P)
+pushd $ROOTDIR/data
 
-pushd data
 rm -f result-*.{txt,tmp}
 
 awk -- '
