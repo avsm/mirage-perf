@@ -154,12 +154,12 @@ xen_direct () {
 }
 
 bridge_reset
-sudo ${XX} mem-set 0 1G
+sudo ${XX} mem-set 0 2G
 sudo ${XX} create $ROOTDIR/obj/xen-images/client.mirage-perf.local.cfg || true
 sudo ${XX} create $ROOTDIR/obj/xen-images/server.mirage-perf.local.cfg || true
 
 while true; do
-  sleep 5  
+  sleep 5
   $SERVER "modprobe tun" && break
 done
 
@@ -170,7 +170,7 @@ for n in $RANGE ; do
   ( [ "$EXPT" == "nsd" ] || [ "$EXPT" == "all" ] ) && nsd3 $n || true
   ( [ "$EXPT" == "bind" ] || [ "$EXPT" == "all" ] ) && bind9 $n || true
   ( [ "$EXPT" == "unix-socket" ] || [ "$EXPT" == "all" ] ) && unix_socket $n || true
-  ( [ "$EXPT" == "unix-direct" ] || [ "$EXPT" == "all" ] ) && unix_direct $n || true
+##  ( [ "$EXPT" == "unix-direct" ] || [ "$EXPT" == "all" ] ) && unix_direct $n || true
   echo .
 done
 

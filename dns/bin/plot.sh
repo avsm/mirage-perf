@@ -40,4 +40,4 @@ done
 
 popd
 
-gnuplot plot.gp
+gnuplot ./cfg/plot.gp
