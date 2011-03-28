@@ -1,0 +1,34 @@
+
+DNS Query Performance Testing Tool
+Version: $Id: queryperf.c,v 1.12 2007-09-05 07:36:04 marka Exp $
+
+[Status] Processing input data
+[Status] Sending queries (beginning with 10.0.0.2)
+[Status] Testing complete
+
+Statistics:
+
+  Parse input file:     multiple times
+  Run time limit:       30 seconds
+  Ran through file:     194 times
+
+  Queries sent:         778539 queries
+  Queries completed:    778539 queries
+  Queries lost:         0 queries
+  Queries delayed(?):   0 queries
+
+  RTT max:         	0.001197 sec
+  RTT min:              0.000293 sec
+  RTT average:          0.000755 sec
+  RTT std deviation:    0.000118 sec
+  RTT out of range:     0 queries
+
+  Percentage completed: 100.00%
+  Percentage lost:        0.00%
+
+  Started at:           Fri Mar 25 19:04:12 2011
+  Finished at:          Fri Mar 25 19:04:42 2011
+  Ran for:              30.000721 seconds
+
+  Queries per second:   25950.676319 qps
+
