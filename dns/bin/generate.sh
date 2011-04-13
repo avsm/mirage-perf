@@ -14,11 +14,6 @@ export LC_ALL='C'
 RANGE=$1
 [ -z "$RANGE" ] && RANGE=$(cat ./cfg/RANGE)
 
-if [ -z "$(which mir-unix-socket)" ]; then
-  echo 'Add mirage tools to your path!'
-  exit
-fi
-
 zonefiles () {
   # generate config files
   for f in cfg/rawdata.conf cfg/format.conf ; do
@@ -76,10 +71,6 @@ servers () {
       d
       }" < server$1.ml >| server$1.ml.tmp &&
       mv server$1.ml.tmp server$1.ml
-
-      mir-unix-direct deens$1-direct.bin && cp _build/deens$1-direct.bin .
-      mir-unix-socket deens$1-socket.bin && cp _build/deens$1-socket.bin .
-      mir-xen deens$1.xen && cp _build/deens$1.xen .
     done
   fi
   popd
@@ -123,7 +114,6 @@ sudo cp -vr obj/nsd-install/ $R
 sudo cp -vr obj/bind9-install/ $R
 sudo [ ! -d $R/data ] && sudo mkdir $R/data
 sudo cp -vr $ROOTDIR/data/named-* $R/data
-sudo cp -vr app/*.bin $R
 sudo umount ./m
 
 popd
