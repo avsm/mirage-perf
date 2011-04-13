@@ -218,13 +218,15 @@ for t in $TAGS ; do
   pushd app
   for n in $RANGE ; do
     mir-unix-direct deens$n-direct.bin
+    mv _build/*.bin .
     mir-unix-socket deens$n-socket.bin
+    mv _build/*.bin .
   done
   popd
 
   cd $ROOTDIR
   sudo mount -o loop ./obj/xen-images/domains/server.mirage-perf.local/disk.img ./m
-  sudo cp -vr app/_build/*.bin ./m/root
+  sudo cp -vr app/*.bin ./m/root
   sudo umount ./m
 
   spawn $ROOTDIR/obj/xen-images/server.mirage-perf.local.cfg
