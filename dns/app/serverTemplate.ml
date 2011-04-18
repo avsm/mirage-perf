@@ -23,7 +23,8 @@ let zonebuf = "
 
 let main () =
   lwt mgr, mgr_t = Net.Manager.create () in
-  let th = Dns.Server.listen mgr (None, 53) zonebuf in
+  let mode = `none in
+  let th = Dns.Server.listen ~mode ~zonebuf mgr (None, 53) in
   th
 
 let _ = OS.Main.run (main ())
