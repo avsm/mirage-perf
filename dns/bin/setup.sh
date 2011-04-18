@@ -104,13 +104,22 @@ if [ ! -d xen-images ]; then
     xen-create-image --force --verbose --password=$PASSWORD \
     --output=$(pwd)/xen-images --dir=$(pwd)/xen-images \
     --hostname=server.mirage-perf.local --bridge=perf0 \
-    --ip=${SERVERIP} --gateway=10.0.0.1 --netmask=10.0.0.255 
-
+    --ip=${SERVERIP} --gateway=10.0.0.1 --netmask=10.0.0.255 \
+      --mirror=http://cdn.debian.net/debian/ --dist=squeeze \
+      --cachedir=./apt-cache --role=udev --pygrub \
+      --initrd=/boot/initrd.img-2.6.32-26-pvops \
+      --kernel=/boot/vmlinuz-2.6.32-26-pvops
+ 
   sudo http_proxy=$http_proxy \
     xen-create-image --force --verbose --password=$PASSWORD \
     --output=$(pwd)/xen-images --dir=$(pwd)/xen-images \
     --hostname=client.mirage-perf.local --bridge=perf0 \
-    --ip=${CLIENTIP} --gateway=10.0.0.1 --netmask=10.0.0.255 
+    --ip=${CLIENTIP} --gateway=10.0.0.1 --netmask=10.0.0.255 \
+      --mirror=http://cdn.debian.net/debian/ --dist=squeeze \
+      --cachedir=./apt-cache --role=udev --pygrub \
+      --initrd=/boot/initrd.img-2.6.32-26-pvops \
+      --kernel=/boot/vmlinuz-2.6.32-26-pvops
+
 fi
 
 # update domUs regardless
@@ -132,3 +141,4 @@ sudo cp -r bind9-install $R/bind9-install
 sudo umount ./m
 
 popd
+
