@@ -1,4 +1,4 @@
-#!/bin/bash -ex
+#!/bin/bash -e
 #
 # mirage-perf DNS experiments: generate input data and configs
 #
@@ -34,9 +34,9 @@ zonefiles () {
   fi
   
   # convert CSV DNS data to zonefiles
-  if [ ! -r "data/named-$1" ]; then
+  if [ ! -r "data/namedx-$1" ]; then
     for f in data/format-$1.conf ; do
-      rm -rf -- "named-$1/"
+      rm -rf -- "data/named-$1/"
       mkdir data/named-$1
       obj/dns-perf/dnsCSVDataReader.pl $f
 
@@ -44,41 +44,23 @@ zonefiles () {
       zf=${ROOTDIR}/$(grep file ${zd}/named.conf-data | cut -d '"' -f 2)
       echo "ns1	10	IN	a	127.0.0.1" >> $zf
       echo "ns2	10	IN	a	127.0.0.1" >> $zf
+      echo >> $zf
+      mkdir -p ${ROOTDIR}/data/namedx-$1
+      cp ${zf} ${ROOTDIR}/data/namedx-$1/zones.db
     done
   fi
 }
   
 servers () {
-  # generate server code
-  pushd app
-  if [ ! -r "app/server$1.ml" ]; then
-    for f in serverTemplate.ml ; do
-      rm -f -- "server$1.ml" "deens$1.mir"
-      echo "Server$1" >| deens$1-direct.mir
-      echo "Server$1" >| deens$1-socket.mir
-      echo "Server$1" >| deens$1.mir
-      
-      ZONEFILES=$(find ../data/named-$1 -name '*.db' -print)
-      cp serverTemplate.ml server$1.ml
-      for zf in ${ZONEFILES}; do
-        sed "/@ZONEBUF@/ {
-        r $zf
-        }" < server$1.ml >| server$1.ml.tmp &&
-        mv server$1.ml.tmp server$1.ml
-      done
-
-      sed "/@ZONEBUF@/ {
-      d
-      }" < server$1.ml >| server$1.ml.tmp &&
-      mv server$1.ml.tmp server$1.ml
-    done
-  fi
+  # convert zone file to a VBD
+  rm -f data/named-$1.vbd
+  dd if=/dev/zero of=data/named-$1.vbd bs=1024 count=10
+  chmod 644 data/named-$1.vbd
+  pushd data/namedx-$1
+  mir-fs-create . ../named-$1.vbd
   popd
-
   # generate minios configs
-  if [ ! -r "data/minios-$1.conf" ]; then
-    sed "s!@NAME@!deens$1!g;s!@KERNEL@!deens$1.xen!g" cfg/minios.conf > data/minios-$1.conf
-  fi
+  sed "s!@VBD@!${ROOTDIR}/data/named-$1.vbd!g;s!@NAME@!deens$1!g;s!@KERNEL@!deensOpenmirage.xen!g" cfg/minios.conf > data/minios-$1.conf
 }
 
 nsdconf () {
@@ -114,6 +96,7 @@ sudo cp -vr obj/nsd-install/ $R
 sudo cp -vr obj/bind9-install/ $R
 sudo [ ! -d $R/data ] && sudo mkdir $R/data
 sudo cp -vr $ROOTDIR/data/named-* $R/data
+sudo cp -vr $ROOTDIR/data/namedx-* $R/data
 sudo umount ./m
 
 popd

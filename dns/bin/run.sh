@@ -28,6 +28,7 @@ RANGE=$1
 
 EXPT=$2
 [ -z "$EXPT" ] && EXPT=all
+echo EXPT=$EXPT
 
 TAGS=$(cat ./cfg/TAGS)
 [ -z "$TAGS" ] && TAGS=HEAD
@@ -64,7 +65,7 @@ spawn () {
 }
 
 shutdown () {
-  sudo $XX shutdown $1 || true
+  sudo $XX destroy $1 || true
   sleep 3
 }
 
@@ -77,7 +78,7 @@ destroy () {
 # yet.
 nooffload () {
   for i in rx tx sg tso ufo gso gro lro; do
-    sudo ethtool -K $1 $i off || true
+    sudo ethtool -K $1 $i off 2>/dev/null || true
   done
 }
 
@@ -95,6 +96,7 @@ bridge_reset () {
 }
 
 bind9 () {
+  ping -c 3 $SERVERIP
   $SERVER "./bind9-install/sbin/named -c ./data/named-$1/named.conf-data" &
   sleep 2
   
@@ -105,6 +107,7 @@ bind9 () {
 }
 
 nsd3 () {
+  ping -c 3 $SERVERIP
   zf=$(grep file ./data/named-$1/named.conf-data | cut -d '"' -f 2)
   z=$(grep zone ./data/named-$1/named.conf-data | cut -d'"' -f 2)
   
@@ -118,9 +121,11 @@ nsd3 () {
 }
 
 unix_socket () {
-  $SERVER "./deens$1-socket.bin" &
+  ping -c 3 $SERVERIP
+  $SERVER "(cd data/namedx-$1 && /root/deensOpenmirage-socket.bin)" &
   sleep 2
 
+  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < queryperf-$1.txt"
   $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < queryperf-$1.txt"
   $CLIENT "./queryperf -l ${LONGRUN} -s ${SERVERIP} < queryperf-$1.txt" >| $DATA/output-unix-socket-$1.txt
 
@@ -141,7 +146,11 @@ unix_direct () {
 xen_direct () {
   cd $ROOTDIR
   bridge_reset
-  
+ 
+  pushd app
+  mir-xen deensOpenmirage.xen
+  popd
+
   # spawn VMs
   spawn $ROOTDIR/obj/xen-images/client.mirage-perf.local.cfg
   pushd app/_build
@@ -163,9 +172,10 @@ xen_direct () {
   sudo $XX unpause $DOMNAME
   sleep 1
 
-  ping -c 3 $SERVERIP
-  ping -c 3 $CLIENTIP
+  ping -c 5 $SERVERIP
+  ping -c 5 $CLIENTIP
 
+  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < queryperf-$1.txt"
   $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < queryperf-$1.txt"
   $CLIENT "./queryperf -l ${LONGRUN} -s ${SERVERIP} < queryperf-$1.txt" >| $DATA/output-xen-direct-$1.txt
 
@@ -184,7 +194,7 @@ checkout_and_build () {
 
   pushd $MIRDIR
   git checkout $(git rev-parse $tag)
-  make clean && make all install
+  make && make all install
   popd
 
   pushd $ROOTDIR/app
@@ -211,24 +221,18 @@ done
 
 for t in $TAGS ; do
   shutdown server.mirage-perf.local
-  checkout_and_build $t
+#  checkout_and_build $t
            
   DATA=data/$t
 
   pushd app
-  for n in $RANGE ; do
-    mir-unix-direct deens$n-direct.bin
-    mv _build/*.bin .
-    mir-unix-socket deens$n-socket.bin
-    mv _build/*.bin .
-  done
+  mir-unix-socket deensOpenmirage.bin
   popd
 
   cd $ROOTDIR
   sudo mount -o loop ./obj/xen-images/domains/server.mirage-perf.local/disk.img ./m
-  sudo cp -vr app/*.bin ./m/root
+  sudo cp -vr app/_build/deensOpenmirage.bin ./m/root/deensOpenmirage-socket.bin
   sudo umount ./m
-
   spawn $ROOTDIR/obj/xen-images/server.mirage-perf.local.cfg
   for n in $RANGE ; do
     echo "=== MIR/UNIX === $n === $t ==="
@@ -240,7 +244,6 @@ for t in $TAGS ; do
 
   for n in $RANGE ; do
     echo "=== MIR/XEN === $n === $t ==="
-    ( cd $ROOTDIR/app ; mir-xen deens$n.xen )
     ( [ "$EXPT" == "xen-direct" ] || [ "$EXPT" == "all" ] ) && xen_direct $n || true
   done
 done

@@ -17,29 +17,16 @@
 open Lwt 
 open Printf
 
-let zonebuf = "
-$ORIGIN www.openmirage.org. ;
-$TTL    240
-www.openmirage.org. 604800 IN SOA  (
-        www.openmirage.org. anil.recoil.org.
-        2010100401 ; serial
-        3600 ; refresh
-        1800 ; retry
-        3024000 ; expire
-        1800 ; minimum
-)
-        IN  NS     ns1.www.openmirage.org.
-        IN  NS     ns2.www.openmirage.org.
-ns1     IN  A      184.72.217.237
-ns2     IN  A      204.236.217.197
-@       IN  TXT    \"I wish I were a llama in Peru!\"
-"
-
 let main () =
   lwt mgr, mgr_t = Net.Manager.create () in
-  let mode = `No_memo in
-  let th = Dns.Server.listen ~mode ~zonebuf mgr (None, 53) in
-  th
+  lwt vbd_ids = OS.Blkif.enumerate () in
+  lwt vbd, _ = match vbd_ids with |[x] -> OS.Blkif.create x |_ -> fail (Failure "1 vbd only") in
+  OS.Time.sleep 0.1 >>
+  lwt fs = Block.RO.create vbd in
+  let zonefile = "zones.db" in
+  lwt zonebuf = Block.RO.read fs zonefile >>= OS.Istring.string_of_stream in
+  let mode = `leaky in
+  Dns.Server.listen ~mode ~zonebuf mgr (None, 53)
 
 let _ = OS.Main.run (main ())
 
