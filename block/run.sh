@@ -3,22 +3,22 @@
 
 ROOTDIR=`pwd`
 
+FILE=test2.vbd
 function xen_direct {
-  cd $ROOTDIR/app
   sudo xl destroy blk || true
   # compile
   mir-xen block.xen
-  sudo dd if=/dev/zero of=/root/testvbd count=20 bs=1M
+  rm -rf vobj
+  mkdir vobj
+  dd if=/dev/zero of=vobj/t1 bs=1M count=1
+  dd if=/dev/zero of=vobj/t2 bs=1M count=1
+  echo 1 >> vobj/t2
+  dd if=/dev/zero of=${FILE} bs=1M count=32
+  (cd vobj && mir-fs-create . ../${FILE})
   # spawn VM
-  cp ../minios-config _build
+  sed -e "s,@VBD@,`pwd`/${FILE},g" < minios-config > _build/minios-config
   cd _build
-  sudo xl create minios-config &
-  sleep 2
- # (
- #  sleep 7;
- #  sudo xl destroy blk;
- # ) &
-  sudo xl console blk
+  sudo xl create -c minios-config 
 }
 
 xen_direct

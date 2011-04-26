@@ -1,8 +1,5 @@
 name="blk"
 memory=1024
 kernel="block.xen"
-#vif=['bridge=foo0']
-#disk=['tap:aio:/root/testvbd,xvda1,w']
-disk=['phy:/dev/brolga-0/testvbd,xvda1,w']
-on_crash='preserve'
+disk=['tap:aio:@VBD@,xvda1,w']
 superpages=1
