@@ -1,6 +1,0 @@
-name="ping"
-memory=1024
-kernel="ping.xen"
-vif=['bridge=perf0']
-on_crash='preserve'
-superpages=1
