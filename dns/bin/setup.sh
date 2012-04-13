@@ -95,6 +95,7 @@ fi
 if [ ! -d xen-images ]; then
   sudo apt-get install sshpass
   mkdir xen-images
+  mkdir -p apt-cache
 
   SERVERIP=$(cat $ROOTDIR/cfg/SERVERIP)
   CLIENTIP=$(cat $ROOTDIR/cfg/CLIENTIP)
