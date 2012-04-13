@@ -17,6 +17,31 @@
 open Lwt 
 open Printf
 
+let port = 53
+
+let get_file filename = 
+printf "HERE\n%!";
+  OS.Devices.with_kv_ro "fs" (fun kv_ro ->
+printf "HERENOW\n%!";
+    match_lwt kv_ro#read filename with
+      | None -> return None
+      | Some k
+        -> Bitstring_stream.string_of_stream k >|= (fun x -> Some x)
+  )
+
+let main () =
+  Log.info "Deens" "starting server, port %d" port;
+  let zonebuf () = 
+    match_lwt get_file "zones.db" with
+      | Some s -> return s
+      | None   -> return ""
+  in
+  Net.Manager.create (fun mgr interface id ->
+    let src = None, port in
+    lwt zb = zonebuf () in
+    Dns.Server.listen zb mgr src
+  )
+(*
 let main () =
   lwt mgr, mgr_t = Net.Manager.create () in
   lwt vbd_ids = OS.Blkif.enumerate () in
@@ -27,6 +52,4 @@ let main () =
   lwt zonebuf = Block.RO.read fs zonefile >>= OS.Istring.string_of_stream in
   let mode = `leaky in
   Dns.Server.listen ~mode ~zonebuf mgr (None, 53)
-
-let _ = OS.Main.run (main ())
-
+*)

@@ -148,7 +148,7 @@ xen_direct () {
   bridge_reset
  
   pushd app
-  mir-xen deensOpenmirage.xen
+  mir-build xen/deensOpenmirage.xen
   popd
 
   # spawn VMs
@@ -224,14 +224,15 @@ for t in $TAGS ; do
 #  checkout_and_build $t
            
   DATA=data/$t
+  mkdir -p $DATA
 
   pushd app
-  mir-unix-socket deensOpenmirage.bin
+  mir-build unix-socket/deensOpenmirage.bin
   popd
 
   cd $ROOTDIR
   sudo mount -o loop ./obj/xen-images/domains/server.mirage-perf.local/disk.img ./m
-  sudo cp -vr app/_build/deensOpenmirage.bin ./m/root/deensOpenmirage-socket.bin
+  sudo cp -vr app/_build/unix-socket/deensOpenmirage.bin ./m/root/deensOpenmirage-socket.bin
   sudo umount ./m
   spawn $ROOTDIR/obj/xen-images/server.mirage-perf.local.cfg
   for n in $RANGE ; do
