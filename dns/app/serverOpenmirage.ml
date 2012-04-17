@@ -20,9 +20,7 @@ open Printf
 let port = 53
 
 let get_file filename = 
-printf "HERE\n%!";
   OS.Devices.with_kv_ro "fs" (fun kv_ro ->
-printf "HERENOW\n%!";
     match_lwt kv_ro#read filename with
       | None -> return None
       | Some k
@@ -41,15 +39,13 @@ let main () =
     lwt zb = zonebuf () in
     Dns.Server.listen zb mgr src
   )
-(*
+
 let main () =
-  lwt mgr, mgr_t = Net.Manager.create () in
-  lwt vbd_ids = OS.Blkif.enumerate () in
-  lwt vbd, _ = match vbd_ids with |[x] -> OS.Blkif.create x |_ -> fail (Failure "1 vbd only") in
-  OS.Time.sleep 0.1 >>
-  lwt fs = Block.RO.create vbd in
-  let zonefile = "zones.db" in
-  lwt zonebuf = Block.RO.read fs zonefile >>= OS.Istring.string_of_stream in
-  let mode = `leaky in
-  Dns.Server.listen ~mode ~zonebuf mgr (None, 53)
-*)
+  Net.Manager.create (fun mgr interface id ->
+    let src = None, port in
+    let zonefile = "zones.db" in
+    lwt zb = get_file zonefile in
+    match zb with
+    |None -> fail (Failure "no zone")
+    |Some zb ->  Dns.Server.listen zb mgr src
+  )
