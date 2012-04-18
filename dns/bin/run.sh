@@ -88,7 +88,6 @@ bridge_reset () {
   sudo brctl delbr perf0 || true
   sudo brctl addbr perf0
   sudo brctl setfd perf0 0
-  sudo brctl sethello perf0 0
   sudo brctl stp perf0 off
   sudo ifconfig perf0 10.0.0.1 netmask 255.255.255.0
   sudo ifconfig perf0 up
