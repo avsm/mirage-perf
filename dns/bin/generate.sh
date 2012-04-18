@@ -1,4 +1,4 @@
-#!/bin/bash -e
+#!/bin/bash -ex
 #
 # mirage-perf DNS experiments: generate input data and configs
 #
@@ -49,16 +49,25 @@ zonefiles () {
       cp ${zf} ${ROOTDIR}/data/namedx-$1/zones.db
     done
   fi
+
+  # convert zone files to mirage crunches 
+  if [ ! -r "data/crunch-$1" ]; then
+    mkdir -p data/crunch-$1
+    mir-crunch -name fs data/namedx-$1 > data/crunch-$1/datax.ml
+    cp app/crunchDNS.mir app/serverDNS.ml data/crunch-$1
+    (cd data/crunch-$1 && mir-build xen/crunchDNS.xen)
+    (cd data/crunch-$1 && mir-build unix-socket/crunchDNS.bin)
+    (cd data/crunch-$1 && mir-build unix-direct/crunchDNS.bin)
+  fi
 }
   
 servers () {
   # convert zone file to a VBD
   rm -f data/named-$1.vbd
+  mkdir -p data
   dd if=/dev/zero of=data/named-$1.vbd bs=1024 count=10
   chmod 644 data/named-$1.vbd
-  pushd data/namedx-$1
-  mir-fs-create . ../named-$1.vbd
-  popd
+  (cd data/namedx-$1 && mir-fs-create . ../named-$1.vbd)
   # generate minios configs
   sed "s!@VBD@!${ROOTDIR}/data/named-$1.vbd!g;s!@NAME@!deens$1!g;s!@KERNEL@!deensOpenmirage.xen!g" cfg/minios.conf > data/minios-$1.conf
 }
@@ -71,8 +80,8 @@ nsdconf () {
   z=$(grep zone ${zd}/named.conf-data | cut -d'"' -f 2)
 
   sed "s!@ZONE@!${z}!g;s!@ZONEFILE@!${zf}!g" $ROOTDIR/cfg/nsd.conf >| ./etc/nsd/nsd-$1.conf
-
   popd
+  ./obj/nsd-install/sbin/zonec -v -C -f data/nsd-$1.db -z $zf -o $z
 }
 
 for n in $RANGE ; do
@@ -81,22 +90,3 @@ for n in $RANGE ; do
   nsdconf $n
 done
 
-# distribute config and data files into domU images
-[ ! -d m ] && mkdir m
-
-R=./m/root
-
-sudo mount -o loop ./obj/xen-images/domains/client.mirage-perf.local/disk.img ./m
-sudo cp -v $ROOTDIR/data/queryperf-* $R
-sudo cp -v $ROOTDIR/queryperf $R
-sudo umount ./m
-
-sudo mount -o loop ./obj/xen-images/domains/server.mirage-perf.local/disk.img ./m
-sudo cp -vr obj/nsd-install/ $R
-sudo cp -vr obj/bind9-install/ $R
-sudo [ ! -d $R/data ] && sudo mkdir $R/data
-sudo cp -vr $ROOTDIR/data/named-* $R/data
-sudo cp -vr $ROOTDIR/data/namedx-* $R/data
-sudo umount ./m
-
-popd
