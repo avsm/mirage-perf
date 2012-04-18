@@ -58,11 +58,13 @@ R=./m/root
 
 sudo mount -o loop ./xen-images/domains/client.mirage-perf.local/disk.img ./m
 sudo cp ../queryperf $R
+sudo cp -rv $ROOTDIR/data $R/
 sudo umount ./m
 
 sudo mount -o loop ./xen-images/domains/server.mirage-perf.local/disk.img ./m
-sudo cp -r nsd-install $R/nsd-install
-sudo cp -r bind9-install $R/bind9-install
+sudo cp -rv nsd-install $R/nsd-install
+sudo cp -rv bind9-install $R/bind9-install
+sudo cp -rv $ROOTDIR/data $R/
 sudo umount ./m
 
 popd

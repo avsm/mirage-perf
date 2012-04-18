@@ -69,7 +69,7 @@ servers () {
   chmod 644 data/named-$1.vbd
   (cd data/namedx-$1 && mir-fs-create . ../named-$1.vbd)
   # generate minios configs
-  sed "s!@VBD@!${ROOTDIR}/data/named-$1.vbd!g;s!@NAME@!deens$1!g;s!@KERNEL@!deensOpenmirage.xen!g" cfg/minios.conf > data/minios-$1.conf
+  sed "s!@VBD@!$ROOTDIR/data/named-$1.vbd!g;s!@NAME@!deens$1!g;s!@KERNEL@!/home/rmm/mirage/mirage-perf/dns/data/crunch-$1/_build/xen/crunchDNS.xen!g" cfg/minios.conf > data/minios-$1.conf
 }
 
 nsdconf () {

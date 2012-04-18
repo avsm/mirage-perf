@@ -65,6 +65,8 @@ spawn () {
 }
 
 shutdown () {
+  sudo $XX shutdown $1 || true
+  sleep 3
   sudo $XX destroy $1 || true
   sleep 3
 }
@@ -99,8 +101,8 @@ bind9 () {
   $SERVER "./bind9-install/sbin/named -c ./data/named-$1/named.conf-data" &
   sleep 2
   
-  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < queryperf-$1.txt"
-  $CLIENT "./queryperf -l ${LONGRUN} -s ${SERVERIP} < queryperf-$1.txt" >| data/output-bind9-unix-$1.txt
+  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < data/queryperf-$1.txt"
+  $CLIENT "./queryperf -l ${LONGRUN} -s ${SERVERIP} < data/queryperf-$1.txt" >| results-data/output-bind9-unix-$1.txt
 
   $SERVER 'kill $(ps x | grep named | grep -v grep | tr -s " " | cut -f 2 -d " ")' || true
 }
@@ -113,31 +115,32 @@ nsd3 () {
   $SERVER "./nsd-install/sbin/zonec -v -C -f ./data/nsd-$1.db -z $zf -o $z"
   $SERVER "./nsd-install/sbin/nsd -c ./nsd-install/etc/nsd/nsd-$1.conf -f ./data/nsd-$1.db" 
 
-  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < queryperf-$1.txt"
-  $CLIENT "./queryperf -l ${LONGRUN} -s ${SERVERIP} < queryperf-$1.txt" >| data/output-nsd-unix-$1.txt
+  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < data/queryperf-$1.txt"
+  $CLIENT "./queryperf -l ${LONGRUN} -s ${SERVERIP} < data/queryperf-$1.txt" >| results-data/output-nsd-unix-$1.txt
 
   $SERVER 'kill $(ps x | grep nsd | grep -v grep | tr -s " " | cut -f 2 -d " ")'
 }
 
 unix_socket () {
   ping -c 3 $SERVERIP
-  $SERVER "(cd data/namedx-$1 && /root/deensOpenmirage-socket.bin)" &
+  $SERVER "(cd data/namedx-$1 && /root/data/crunch-$1/_build/unix-socket/crunchDNS.bin)" &
   sleep 2
 
-  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < queryperf-$1.txt"
-  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < queryperf-$1.txt"
-  $CLIENT "./queryperf -l ${LONGRUN} -s ${SERVERIP} < queryperf-$1.txt" >| $DATA/output-unix-socket-$1.txt
+  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < data/queryperf-$1.txt"
+  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < data/queryperf-$1.txt"
+  $CLIENT "./queryperf -l ${LONGRUN} -s ${SERVERIP} < data/queryperf-$1.txt" >| $DATA/output-unix-socket-$1.txt
 
   $SERVER 'kill $(ps x | grep deens | grep -v grep | tr -s " " | cut -f 2 -d " ")'
 }
 
 unix_direct () {
-  $SERVER "./deens$1-direct.bin" &
+  ping -c 3 $SERVERIP
+  $SERVER "(cd data/namedx-$1 && /root/data/crunch-$1/_build/unix-direct/crunchDNS.bin)" &
   sleep 2
 
-  SERVERIP=10.0.0.10
-  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < queryperf-$1.txt"
-  $CLIENT "./queryperf -l ${LONGRUN} -s ${SERVERIP} < queryperf-$1.txt" >| $DATA/output-unix-direct-$1.txt
+  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < data/queryperf-$1.txt"
+  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < data/queryperf-$1.txt"
+  $CLIENT "./queryperf -l ${LONGRUN} -s ${SERVERIP} < data/queryperf-$1.txt" >| $DATA/output-unix-direct-$1.txt
 
   $SERVER 'kill $(ps x | grep deens | grep -v grep | tr -s " " | cut -f 2 -d " ")'
 }
@@ -146,10 +149,6 @@ xen_direct () {
   cd $ROOTDIR
   bridge_reset
  
-  pushd app
-  mir-build xen/deensOpenmirage.xen
-  popd
-
   # spawn VMs
   spawn $ROOTDIR/obj/xen-images/client.mirage-perf.local.cfg
   pushd app/_build
@@ -174,9 +173,9 @@ xen_direct () {
   ping -c 5 $SERVERIP
   ping -c 5 $CLIENTIP
 
-  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < queryperf-$1.txt"
-  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < queryperf-$1.txt"
-  $CLIENT "./queryperf -l ${LONGRUN} -s ${SERVERIP} < queryperf-$1.txt" >| $DATA/output-xen-direct-$1.txt
+  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < data/queryperf-$1.txt"
+  $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < data/queryperf-$1.txt"
+  $CLIENT "./queryperf -l ${LONGRUN} -s ${SERVERIP} < data/queryperf-$1.txt" >| $DATA/output-xen-direct-$1.txt
 
   if [ ${PROFILING} -gt 0 ]; then
     sudo opcontrol --stop
@@ -207,7 +206,7 @@ bridge_reset
 sudo $XX mem-set 0 2G
 spawn $ROOTDIR/obj/xen-images/client.mirage-perf.local.cfg
 spawn $ROOTDIR/obj/xen-images/server.mirage-perf.local.cfg
-$SERVER "modprobe tun" && break
+$SERVER "modprobe tun" 
 
 nooffload vif$(sudo $XX domid client.mirage-perf.local).0
 nooffload vif$(sudo $XX domid server.mirage-perf.local).0
@@ -222,22 +221,22 @@ for t in $TAGS ; do
   shutdown server.mirage-perf.local
 #  checkout_and_build $t
            
-  DATA=data/$t
+  DATA=results-data/$t
   mkdir -p $DATA
 
-  pushd app
-  mir-build unix-socket/deensOpenmirage.bin
-  popd
+  #pushd app
+  #mir-build unix-socket/deensOpenmirage.bin
+  #popd
 
   cd $ROOTDIR
-  sudo mount -o loop ./obj/xen-images/domains/server.mirage-perf.local/disk.img ./m
-  sudo cp -vr app/_build/unix-socket/deensOpenmirage.bin ./m/root/deensOpenmirage-socket.bin
-  sudo umount ./m
+#  sudo mount -o loop ./obj/xen-images/domains/server.mirage-perf.local/disk.img ./m
+#  sudo cp -vr data ./m/root/input/
+#  sudo umount ./m
   spawn $ROOTDIR/obj/xen-images/server.mirage-perf.local.cfg
   for n in $RANGE ; do
     echo "=== MIR/UNIX === $n === $t ==="
     ( [ "$EXPT" == "unix-socket" ] || [ "$EXPT" == "all" ] ) && unix_socket $n || true
-##  ( [ "$EXPT" == "unix-direct" ] || [ "$EXPT" == "all" ] ) && unix_direct $n || true
+##    ( [ "$EXPT" == "unix-direct" ] || [ "$EXPT" == "all" ] ) && unix_direct $n || true
   done
   shutdown server.mirage-perf.local
   shutdown client.mirage-perf.local
