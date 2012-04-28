@@ -56,23 +56,23 @@ XEN_SYMS=/boot/xen-syms-4.1.0-rc7-pre
 # domU management utils
 spawn_paused () {
   sudo $XX create -p $1 || true
-  sleep 3
+  sleep 5
 }
 
 spawn () {
   sudo $XX create $1 || true
-  sleep 3
+  sleep 5
 }
 
 shutdown () {
   sudo $XX shutdown $1 || true
-  sleep 3
+  sleep 5
   sudo $XX destroy $1 || true
-  sleep 3
+  sleep 5
 }
 
 destroy () {
-  sleep 3
+  sleep 5
   sudo $XX destroy $1 || true
 }
 
@@ -123,14 +123,14 @@ nsd3 () {
 
 unix_socket () {
   ping -c 3 $SERVERIP
-  $SERVER "(cd data/namedx-$1 && /root/data/crunch-$1/_build/unix-socket/crunchDNS.bin)" &
+  $SERVER "(cd data/namedx-$1 && OCAMLRUNPARAM="s=4M,i=32K,o=15,h=1.5G" /root/data/crunch-$1/_build/unix-socket/crunchDNS.bin)" &
   sleep 2
 
   $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < data/queryperf-$1.txt"
   $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < data/queryperf-$1.txt"
   $CLIENT "./queryperf -l ${LONGRUN} -s ${SERVERIP} < data/queryperf-$1.txt" >| $DATA/output-unix-socket-$1.txt
 
-  $SERVER 'kill $(ps x | grep deens | grep -v grep | tr -s " " | cut -f 2 -d " ")'
+  $SERVER 'kill $(ps x | grep crunchDNS | grep -v grep | tr -s " " | cut -f 2 -d " ")'
 }
 
 unix_direct () {
@@ -142,7 +142,7 @@ unix_direct () {
   $CLIENT "./queryperf -l ${SHORTRUN} -s ${SERVERIP} < data/queryperf-$1.txt"
   $CLIENT "./queryperf -l ${LONGRUN} -s ${SERVERIP} < data/queryperf-$1.txt" >| $DATA/output-unix-direct-$1.txt
 
-  $SERVER 'kill $(ps x | grep deens | grep -v grep | tr -s " " | cut -f 2 -d " ")'
+  $SERVER 'kill $(ps x | grep crunchDNS | grep -v grep | tr -s " " | cut -f 2 -d " ")'
 }
 
 xen_direct () {
@@ -151,8 +151,8 @@ xen_direct () {
  
   # spawn VMs
   spawn $ROOTDIR/obj/xen-images/client.mirage-perf.local.cfg
-  pushd app/_build
-  spawn_paused ../../data/minios-$n.conf
+  pushd data/crunch-$n/_build
+  spawn_paused ../../minios-$n.conf
   popd
 
   DOMNAME=deens$n
@@ -235,7 +235,7 @@ for t in $TAGS ; do
   spawn $ROOTDIR/obj/xen-images/server.mirage-perf.local.cfg
   for n in $RANGE ; do
     echo "=== MIR/UNIX === $n === $t ==="
-    ( [ "$EXPT" == "unix-socket" ] || [ "$EXPT" == "all" ] ) && unix_socket $n || true
+##    ( [ "$EXPT" == "unix-socket" ] || [ "$EXPT" == "all" ] ) && unix_socket $n || true
 ##    ( [ "$EXPT" == "unix-direct" ] || [ "$EXPT" == "all" ] ) && unix_direct $n || true
   done
   shutdown server.mirage-perf.local

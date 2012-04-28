@@ -5,7 +5,7 @@
 # Richard Mortier <mort@cantab.net>
 
 ROOTDIR=$(cd $(dirname $0)/.. 2>/dev/null; pwd -P)
-pushd $ROOTDIR/data
+pushd $ROOTDIR/results-data
 
 rm -f result-*.{txt,tmp}
 
@@ -32,7 +32,7 @@ awk -- '
         }
         print "done!" ;
     }
-    ' output-*.txt
+    ' output-*.txt HEAD/output-*.txt
 
 for n in result-*.tmp ; do
   sort -n $n > ${n%tmp}txt

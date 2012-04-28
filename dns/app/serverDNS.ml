@@ -54,5 +54,5 @@ let main () =
     lwt zb = get_file zonefile in
     match zb with
     |None -> fail (Failure "no zone")
-    |Some zonebuf ->  Dns.Server.listen ~mode:`none ~zonebuf mgr src
+    |Some zonebuf ->  Dns.Server.listen ~mode:`leaky ~zonebuf mgr src
   )
