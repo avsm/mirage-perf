@@ -8,8 +8,6 @@
 #
 # Richard Mortier <mort@cantab.net>
 
-KERNEL=/boot/vmlinuz-3.3.0-trunk-amd64
-INITRD=/boot/initrd-3.3.0-trunk-amd64
 ROOTDIR=$(cd $(dirname $0)/.. 2>/dev/null; pwd -P)
 [ ! -d $ROOTDIR/obj ] && mkdir -p $ROOTDIR/obj
 pushd $ROOTDIR/obj
