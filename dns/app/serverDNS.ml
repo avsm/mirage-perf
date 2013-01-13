@@ -22,22 +22,52 @@ let port = 53
 let get_file filename = 
   OS.Devices.with_kv_ro "fs" (fun kv_ro ->
     match_lwt kv_ro#read filename with
-      | None -> return None
-      | Some k
-        -> Bitstring_stream.string_of_stream k >|= (fun x -> Some x)
+      | None -> fail (Failure "File not found")
+      | Some s -> Lwt_stream.to_list s >|= Cstruct.copyv
   )
 
-let main () =
-  Log.info "Deens" "starting server, port %d" port;
-  let zonebuf () = 
-    match_lwt get_file "zones.db" with
-      | Some s -> return s
-      | None   -> return ""
+module DL = Dns.Loader
+module DQ = Dns.Query
+module DR = Dns.RR
+module DP = Dns.Packet
+
+let dnstrie = DL.(state.db.trie)
+
+let new_buf () = OS.Io_page.(to_cstruct (get ()))
+
+let get_answer buf qname qtype id =
+  let qname = List.map String.lowercase qname in  
+  let ans = DQ.answer_query qname qtype dnstrie in
+  let detail = 
+    DP.({ qr=Response; opcode=Standard; 
+          aa=ans.DQ.aa; tc=false; rd=false; ra=false; 
+          rcode=ans.DQ.rcode })      
   in
-  Net.Manager.create (fun mgr interface id ->
-    let src = None, port in
-    lwt zb = zonebuf () in
-    Dns.Server.listen zb mgr src
+  let questions = [ DP.({ q_name=qname; q_type=qtype; q_class=Q_IN }) ] in
+  let dp = DP.({ id; detail; questions;
+        answers=ans.DQ.answer; 
+        authorities=ans.DQ.authority; 
+        additionals=ans.DQ.additional; 
+      })
+  in
+  DP.marshal buf dp
+
+let no_memo mgr buf src dst bits =
+  let names = Hashtbl.create 8 in
+  DP.(
+    let d = parse names bits in
+    let q = List.hd d.questions in
+    let r = get_answer buf q.q_name q.q_type d.id in
+    Net.Datagram.UDPv4.send mgr ~src dst r
+  )
+
+let listen ?(mode=`none) ~zb mgr src =
+  Dns.Zone.load_zone [] zb;
+  let buf = new_buf () in
+  Net.Datagram.UDPv4.(recv mgr src
+                        (match mode with
+                          |`none -> no_memo mgr buf src
+                        )
   )
 
 let main () =
@@ -47,12 +77,9 @@ let main () =
        ipv4_addr_of_tuple (255l,255l,255l,0l),
        [ipv4_addr_of_tuple (10l,0l,0l,1l)]
       )) in
-    lwt () = Net.Manager.configure interface (`IPv4 ip) in
-  
+    lwt () = Net.Manager.configure interface (`DHCP) in
     let src = None, port in
     let zonefile = "zones.db" in
     lwt zb = get_file zonefile in
-    match zb with
-    |None -> fail (Failure "no zone")
-    |Some zonebuf ->  Dns.Server.listen ~mode:`leaky ~zonebuf mgr src
+    listen ~mode:`none ~zb mgr src
   )
